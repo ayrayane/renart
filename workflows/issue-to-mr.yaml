@@ -1,0 +1,15 @@
+id: issue-to-mr
+label: Créer une MR depuis l'issue
+description: Une branche et une MR en brouillon
+context: issue
+workspace: true
+tools: [get_issue, comment_issue, create_merge_request, code_graph_explore, code_graph_callers, code_graph_impact, code_graph_affected]
+prompt: |
+  Lis l'issue {{issue.iid}} du projet {{project.path}} et ses commentaires.
+  Le dépôt est cloné dans ton répertoire de travail. Commence par le code graph (code_graph_explore) pour
+  trouver où intervenir, puis code_graph_callers et code_graph_impact pour savoir qui dépend du code concerné.
+  Fais le changement le plus petit qui règle l'issue, sans casser les appelants, et mets à jour les tests
+  que code_graph_affected désigne.
+  Ouvre ensuite une MR avec create_merge_request ; la description résume le changement et finit par "Closes #{{issue.iid}}".
+  Pour finir, commente l'issue avec le lien de la MR.
+  Si l'issue est trop floue pour être réglée, ne change rien et commente l'issue avec tes questions.

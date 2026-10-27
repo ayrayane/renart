@@ -1,0 +1,103 @@
+gitlab:
+  # Base URL of the GitLab instance.
+  url: https://gitlab.example.com
+  # Project holding the instance workflows.
+  workflowsProject: renart/workflows
+  # Extra NetworkPolicy egress rules for runner pods, to reach a GitLab on a private address
+  # (public addresses are allowed on 443 by default, private ranges are not). Behind an in-cluster ingress
+  # controller on a hostPort, allow its pods: traffic to the node IP is rewritten to the pod before the policy applies.
+  egress: []
+
+images:
+  orchestrator: ghcr.io/ayrayane/renart-orchestrator:0.9.0
+  runner: ghcr.io/ayrayane/renart-runner:0.9.0
+  # Name of an existing docker-registry Secret, used for both images.
+  pullSecret: ""
+
+# Existing Secrets (create them before installing, see docs/install.md).
+secrets:
+  # Key GITLAB_TOKEN: project access token on gitlab.workflowsProject, scopes read_api + read_repository.
+  orchestrator: renart-orchestrator
+  # Key ANTHROPIC_API_KEY (or CLAUDE_CODE_OAUTH_TOKEN), loaded into runner pods only.
+  anthropic: renart-anthropic
+  # Key GITLAB_TOKEN: personal access token of the Renart GitLab account (scopes api, write_repository).
+  # Everything the agent writes is authored by this account; the user's own token never leaves the orchestrator.
+  bot: renart-bot
+
+# Existing ConfigMap with a ca.crt, when GitLab uses a private CA. Mounted in the orchestrator and runner pods.
+caConfigMap: ""
+
+ingress:
+  enabled: true
+  className: ""
+  host: renart.example.com
+  annotations: {}
+  tlsSecret: renart-tls
+
+networkPolicy:
+  enabled: true
+  # Pods allowed to reach the orchestrator: your ingress controller.
+  ingressFrom:
+    namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+    podSelector: {}
+
+quota:
+  enabled: true
+  # Maximum pods in the namespace (orchestrator + concurrent runs).
+  pods: 10
+
+# Append-only audit trail of finished runs, kept on a volume (kept on uninstall). Read it with:
+#   kubectl -n <ns> exec deploy/renart-orchestrator -- cat /data/audit.jsonl | jq
+audit:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+
+# Agent engine for every run.
+#   claude: Claude Agent SDK on the Anthropic API (secrets.anthropic holds ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN).
+#   openai: Renart's own tool-calling loop on any OpenAI-compatible server (vLLM, Ollama, agentgateway…), no Anthropic.
+#           secrets.anthropic may hold OPENAI_API_KEY if the server wants one; the model needs tool calling.
+engine:
+  name: claude
+  # claude: optional model id (default claude-opus-5-5). openai: the model name the server serves (required).
+  model: ""
+  openai:
+    # OpenAI-compatible base URL, e.g. http://vllm.llm.svc:8000/v1. Leave empty with agentgateway.enabled.
+    baseUrl: ""
+    # Extra NetworkPolicy egress rules so runner pods can reach that server (in-cluster addresses are closed by default).
+    egress: []
+
+# Air-gapped install: no traffic to public addresses from runner and code graph build pods (their public HTTPS
+# rule is removed). Needs engine.name: openai with an in-cluster model server, usually agentgateway in front of vLLM;
+# images come from your own registry (images.*, agentgateway.image). See docs/air-gap.md.
+airGap: false
+
+# Optional agentgateway in front of the model server (openai engine only). Off by default.
+agentgateway:
+  enabled: false
+  image: ghcr.io/agentgateway/agentgateway:v1.5.0
+  # agentgateway config, see https://agentgateway.dev/docs. Clients call http://renart-agentgateway:3000/v1.
+  config: |
+    llm:
+      port: 3000
+      models:
+      - name: "*"
+        provider:
+          custom:
+            formats: [{ type: completions }]
+        params:
+          model: Qwen/Qwen2.5-32B-Instruct
+          baseUrl: http://vllm.llm.svc:8000/v1
+
+orchestrator:
+  # Runs one user may have going at once (each spends model budget and takes a pod from the quota).
+  maxRunsPerUser: 3
+  # The orchestrator only answers code graph queries; builds run in their own Jobs (codeGraph.buildMemory).
+  memoryLimit: 1Gi
+
+codeGraph:
+  # Memory limit of a code graph build Job. Measured peaks: ~300 MB for Flask (83 Python files, 18k lines,
+  # 3.6 s), ~2.9 GB for Django (2,900 files, 530k lines, 54 s). Size this for your largest repository.
+  buildMemory: 4Gi
+  # Volume for code graph snapshots (5 per project), apart from the audit. Empty: kept in the pod's /tmp, lost on restart.
+  storage: 20Gi

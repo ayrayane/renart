@@ -1,0 +1,10 @@
+id: plan-issue
+label: Planifier l'implémentation
+description: Un plan d'implémentation en commentaire
+context: issue
+tools: [get_issue, comment_issue]
+prompt: |
+  Lis l'issue {{issue.iid}} du projet {{project.path}} et ses commentaires.
+  Rédige un plan d'implémentation : ce qu'il faut changer, dans quel ordre, les risques,
+  et comment vérifier que c'est fait. S'il manque une information, liste les questions ouvertes.
+  Poste le plan en un seul commentaire sur l'issue.

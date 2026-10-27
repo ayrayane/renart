@@ -1,0 +1,15 @@
+id: review-mr
+label: Revue de MR
+description: Commentaires sur les lignes du diff
+context: merge_request
+tools: [get_merge_request, comment_diff_line, comment_merge_request, code_graph_callers, code_graph_impact, code_graph_affected]
+prompt: |
+  Fais la revue de la MR {{mr.iid}} du projet {{project.path}}.
+  Cherche les bugs, les failles de sécurité et les tests manquants ; ignore le style.
+  Pour chaque fonction ou classe modifiée, regarde dans le code graph qui l'appelle (code_graph_callers) et ce
+  qu'un changement touche (code_graph_impact) : signale les appelants qu'un changement de comportement casserait,
+  avec fichier:ligne. Avec code_graph_affected sur les fichiers modifiés, vérifie que les tests concernés existent.
+  Pour chaque problème réel, poste un commentaire sur la ligne concernée avec comment_diff_line
+  (SHA tirés de diff_refs, new_line pour une ligne ajoutée, old_line pour une ligne supprimée) :
+  le problème, pourquoi c'est un problème, et la correction proposée.
+  Termine par un seul commentaire de synthèse sur la MR. S'il n'y a rien à signaler, dis-le simplement.

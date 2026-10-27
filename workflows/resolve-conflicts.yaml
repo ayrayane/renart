@@ -1,0 +1,18 @@
+id: resolve-conflicts
+label: Résoudre les conflits
+description: Fusionne la branche cible et résout les conflits, en MR
+context: merge_request
+when: has_conflicts
+workspace: true
+tools: [get_merge_request, merge_target_branch, create_merge_request, comment_merge_request, code_graph_callers]
+prompt: |
+  Résous les conflits de la MR {{mr.iid}} du projet {{project.path}}.
+  Lis-la avec get_merge_request pour comprendre ce qu'elle cherche à faire. Le dépôt est cloné sur sa branche.
+  Appelle merge_target_branch : la branche cible est fusionnée, et les fichiers en conflit te sont listés.
+  Pour chaque fichier, lis les deux côtés (<<<<<<< la MR, >>>>>>> la branche cible) et écris une version qui garde
+  l'intention des deux. Si la cible a renommé ou déplacé du code que la MR modifie, applique le changement de la MR
+  au nouvel endroit (code_graph_callers aide à le retrouver). Supprime tous les marqueurs de conflit.
+  Ouvre ensuite une MR avec create_merge_request (elle cible la branche de la MR) ; sa description explique,
+  fichier par fichier, comment chaque conflit a été résolu. Puis commente la MR d'origine avec le lien.
+  Si un conflit demande une décision produit que le code ne permet pas de trancher, ne devine pas :
+  explique le choix à faire en commentaire sur la MR et n'ouvre pas de MR.

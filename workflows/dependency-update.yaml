@@ -1,0 +1,17 @@
+id: dependency-update
+label: Adapter le code à la mise à jour
+description: Corrige ce que casse la nouvelle version, en MR
+context: merge_request
+when: dependency_update
+workspace: true
+tools: [get_merge_request, get_pipeline, get_job_log, create_merge_request, comment_merge_request, code_graph_explore, code_graph_callers]
+prompt: |
+  La MR {{mr.iid}} du projet {{project.path}} met à jour une ou plusieurs dépendances. Adapte le code à la nouvelle version.
+  Lis-la avec get_merge_request : quelles dépendances, de quelle version à quelle version. Si elle a une pipeline
+  (head_pipeline), lis ses échecs avec get_pipeline. Le dépôt est cloné sur la branche de la MR.
+  Trouve les usages des API qui ont changé (code_graph_explore, code_graph_callers sur les symboles importés de la
+  dépendance) et adapte-les à la nouvelle version : renommages, signatures, options supprimées, dépréciations.
+  Ne change pas la version demandée par la MR, et ne contourne pas la mise à jour (pas d'épinglage à l'ancienne version).
+  Ouvre une MR avec create_merge_request (elle cible la branche de la MR) ; sa description liste chaque changement
+  d'API et l'endroit adapté. Puis commente la MR d'origine avec le lien.
+  Si rien n'est cassé, dis-le en commentaire sur la MR, avec ce que tu as vérifié.

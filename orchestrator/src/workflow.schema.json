@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Renart workflow",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "label",
+    "context",
+    "tools",
+    "prompt"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "enum": [
+        "merge_request",
+        "issue",
+        "pipeline",
+        "project"
+      ]
+    },
+    "tools": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "get_merge_request",
+          "get_issue",
+          "get_pipeline",
+          "get_job_log",
+          "comment_merge_request",
+          "comment_diff_line",
+          "comment_issue",
+          "create_merge_request",
+          "get_discussions",
+          "reply_to_discussion",
+          "update_merge_request_description",
+          "merge_target_branch",
+          "code_graph_explore",
+          "code_graph_callers",
+          "code_graph_impact",
+          "code_graph_affected"
+        ]
+      }
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspace": {
+      "type": "boolean",
+      "description": "Clone the project so the agent can edit files; required by create_merge_request. On a merge request, the clone is the MR's source branch and the new MR targets it."
+    },
+    "description": {
+      "type": "string",
+      "description": "One line shown under the action in the extension."
+    },
+    "when": {
+      "enum": [
+        "has_conflicts",
+        "unresolved_discussions",
+        "dependency_update"
+      ],
+      "description": "Show the action in the extension only when the merge request has conflicts, unresolved review threads, or is a dependency update (Renovate, Dependabot)."
+    }
+  },
+  "if": {
+    "properties": {
+      "tools": {
+        "type": "array",
+        "contains": {
+          "const": "create_merge_request"
+        }
+      }
+    },
+    "required": [
+      "tools"
+    ]
+  },
+  "then": {
+    "required": [
+      "workspace"
+    ],
+    "properties": {
+      "workspace": {
+        "const": true
+      }
+    }
+  }
+}

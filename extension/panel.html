@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Renart</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <img class="logo" src="icons/fox.svg" alt="">
+      <span>Renart</span>
+    </div>
+    <div class="bar-actions">
+      <button id="settings" class="icon-btn" title="Options" aria-label="Options"></button>
+      <button id="account" class="avatar-btn" aria-controls="menu" aria-expanded="false" hidden></button>
+      <div id="menu" class="menu" hidden>
+        <div id="menuUser" class="menu-user"></div>
+        <button id="logout" class="menu-item"></button>
+      </div>
+    </div>
+    <div id="progress" class="progress" hidden></div>
+  </header>
+
+  <main id="main">
+    <div id="error" class="alert" role="alert" hidden>
+      <span id="errorText"></span>
+      <button id="retry" class="btn-link">Réessayer</button>
+    </div>
+    <section id="setup" class="empty" hidden>
+      <img class="empty-logo" src="icons/fox.svg" alt="">
+      <h1>Bienvenue dans Renart</h1>
+      <p>Reliez l'extension à votre GitLab et à votre orchestrateur pour lancer des agents depuis vos merge requests et vos issues.</p>
+      <button id="openOptions" class="btn confirm">Configurer</button>
+    </section>
+
+    <section id="signin" class="empty" hidden>
+      <img class="empty-logo" src="icons/fox.svg" alt="">
+      <h1>Connectez-vous à GitLab</h1>
+      <p id="signinNote" class="note" hidden>Votre session GitLab a expiré.</p>
+      <p>Renart agit à votre demande : ses commentaires et ses merge requests indiquent que c'est vous qui l'avez lancé.</p>
+      <button id="login" class="btn confirm">Se connecter avec GitLab</button>
+    </section>
+
+    <section id="nocontext" class="empty" hidden>
+      <img class="empty-logo" src="icons/fox.svg" alt="">
+      <h1>Ouvrez une merge request, une issue ou une pipeline</h1>
+      <p>Les actions de Renart apparaissent ici selon la page GitLab ouverte : revue et résumé sur une merge request, plan et correction sur une issue, réparation d'une pipeline en échec.</p>
+    </section>
+
+    <section id="launch" hidden>
+      <div class="context" aria-live="polite">
+        <span id="ctxIcon" class="ctx-icon"></span>
+        <div class="ctx-text">
+          <div id="ctxTitle" class="ctx-title"></div>
+          <div class="ctx-meta"><span id="ctxRef"></span><span id="ctxBadges" class="badges"></span></div>
+        </div>
+      </div>
+      <h1 class="sr-only">Actions Renart</h1>
+      <div id="composer" class="composer">
+        <label for="instruction" class="sr-only">Consigne pour l'agent</label>
+        <textarea id="instruction" rows="1" maxlength="4000" placeholder="Consigne pour l'agent (facultatif)…"></textarea>
+        <p class="muted tiny">Ajoutée à l'action que vous lancez, par exemple « concentre-toi sur la sécurité ».</p>
+      </div>
+      <div id="launchBody">
+        <div id="suggestedBox" hidden>
+          <h2 class="label">Suggérées</h2>
+          <ul id="suggested" class="actions" aria-label="Actions suggérées"></ul>
+        </div>
+        <h2 class="label">Actions</h2>
+        <ul id="actions" class="actions" aria-label="Actions disponibles"></ul>
+        <details id="more" class="more" hidden>
+          <summary id="moreLabel"></summary>
+          <ul id="moreActions" class="actions" aria-label="Autres actions"></ul>
+        </details>
+      </div>
+    </section>
+
+    <section id="running" hidden>
+      <div class="run-head">
+        <h1 id="runTitle" class="run-title" tabindex="-1"></h1>
+        <p id="runContext" class="run-context"></p>
+        <p id="runStatus" class="run-status" role="status"></p>
+      </div>
+      <details id="stepsBox" class="steps-box" open>
+        <summary id="stepsSummary">Étapes</summary>
+        <ol id="steps" class="steps" aria-label="Étapes"></ol>
+      </details>
+      <div id="answers"></div>
+      <div id="links" class="links" hidden>
+        <h2 class="label">Créé par Renart</h2>
+        <ul id="linkList"></ul>
+      </div>
+    </section>
+
+  </main>
+
+
+  <footer id="runFooter" class="run-footer" hidden>
+    <button id="stop" class="btn danger"></button>
+    <button id="back" class="btn confirm" hidden>Nouvelle action</button>
+  </footer>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

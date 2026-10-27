@@ -1,0 +1,185 @@
+{{- if and .Values.airGap (ne .Values.engine.name "openai") }}
+{{- fail "airGap: true needs engine.name: openai (the claude engine calls the Anthropic API)" }}
+{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: renart-orchestrator
+{{- with .Values.images.pullSecret }}
+imagePullSecrets: [{ name: {{ . }} }]
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: renart-orchestrator
+rules:
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [create, get, list, delete]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: renart-orchestrator
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: renart-orchestrator }
+subjects: [{ kind: ServiceAccount, name: renart-orchestrator, namespace: {{ .Release.Namespace }} }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: renart-orchestrator
+spec:
+  replicas: 1
+  {{- if or .Values.audit.enabled .Values.codeGraph.storage }}
+  # The data volumes are ReadWriteOnce: the old pod must let go before the new one starts.
+  strategy: { type: Recreate }
+  {{- end }}
+  selector: { matchLabels: { app: renart-orchestrator } }
+  template:
+    metadata:
+      labels: { app: renart-orchestrator }
+    spec:
+      serviceAccountName: renart-orchestrator
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, fsGroup: 1000, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: orchestrator
+          image: {{ .Values.images.orchestrator }}
+          ports: [{ name: http, containerPort: 8080 }, { name: internal, containerPort: 8081 }]
+          env:
+            - { name: GITLAB_URL, value: {{ .Values.gitlab.url | quote }} }
+            - { name: WORKFLOWS_PROJECT, value: {{ .Values.gitlab.workflowsProject | quote }} }
+            - { name: RUNS_NAMESPACE, value: {{ .Release.Namespace }} }
+            - { name: RUNNER_IMAGE, value: {{ .Values.images.runner | quote }} }
+            - { name: ANTHROPIC_SECRET, value: {{ .Values.secrets.anthropic | quote }} }
+            - { name: BOT_SECRET, value: {{ .Values.secrets.bot | quote }} }
+            {{- if eq .Values.engine.name "openai" }}
+            - { name: RENART_ENGINE, value: openai }
+            - { name: MODEL, value: {{ required "engine.model is required with the openai engine" .Values.engine.model | quote }} }
+            - { name: OPENAI_BASE_URL, value: {{ (ternary "http://renart-agentgateway:3000/v1" .Values.engine.openai.baseUrl .Values.agentgateway.enabled) | required "engine.openai.baseUrl is required" | quote }} }
+            {{- else if .Values.engine.model }}
+            - { name: RENART_MODEL, value: {{ .Values.engine.model | quote }} }
+            {{- end }}
+            {{- if .Values.audit.enabled }}
+            - { name: AUDIT_FILE, value: /data/audit.jsonl }
+            {{- end }}
+            - { name: GRAPH_DIR, value: {{ ternary "/graphs" "/tmp/graphs" (not (empty .Values.codeGraph.storage)) }} }
+            - { name: MAX_RUNS_PER_USER, value: {{ .Values.orchestrator.maxRunsPerUser | quote }} }
+            - name: HMAC_KEY
+              valueFrom: { secretKeyRef: { name: renart-internal, key: HMAC_KEY } }
+            # Runs reach the code-graph endpoint through the Service, inside the cluster.
+            - { name: INTERNAL_URL, value: "http://renart-orchestrator.{{ .Release.Namespace }}.svc:8081" }
+            - { name: HOME, value: /tmp }
+            # Code graph builds run as their own Jobs, from this same image (git + CodeGraph), with their own memory.
+            - { name: GRAPH_IMAGE, value: {{ .Values.images.orchestrator | quote }} }
+            - { name: GRAPH_MEMORY, value: {{ .Values.codeGraph.buildMemory | quote }} }
+            - name: BOT_GITLAB_TOKEN
+              valueFrom: { secretKeyRef: { name: {{ .Values.secrets.bot }}, key: GITLAB_TOKEN } }
+            {{- with .Values.images.pullSecret }}
+            - { name: RUNNER_PULL_SECRET, value: {{ . | quote }} }
+            {{- end }}
+            {{- with .Values.caConfigMap }}
+            - { name: RUNNER_CA_CONFIGMAP, value: {{ . | quote }} }
+            - { name: NODE_EXTRA_CA_CERTS, value: /etc/renart/ca/ca.crt }
+            {{- end }}
+          envFrom: [{ secretRef: { name: {{ .Values.secrets.orchestrator }} } }]
+          readinessProbe: { httpGet: { path: /healthz, port: http } }
+          resources: { requests: { cpu: 50m, memory: 192Mi }, limits: { memory: {{ .Values.orchestrator.memoryLimit }} } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            {{- with .Values.caConfigMap }}
+            - { name: ca, mountPath: /etc/renart/ca, readOnly: true }
+            {{- end }}
+            {{- if .Values.audit.enabled }}
+            - { name: audit, mountPath: /data }
+            {{- end }}
+            {{- if .Values.codeGraph.storage }}
+            - { name: graphs, mountPath: /graphs }
+            {{- end }}
+      volumes:
+        # Clones and graph builds happen here; the root filesystem stays read-only.
+        - { name: tmp, emptyDir: { sizeLimit: 4Gi } }
+        {{- with .Values.caConfigMap }}
+        - { name: ca, configMap: { name: {{ . }} } }
+        {{- end }}
+        {{- if .Values.audit.enabled }}
+        - { name: audit, persistentVolumeClaim: { claimName: renart-audit } }
+        {{- end }}
+        {{- if .Values.codeGraph.storage }}
+        - { name: graphs, persistentVolumeClaim: { claimName: renart-graphs } }
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: renart-orchestrator
+spec:
+  selector: { app: renart-orchestrator }
+  # The Ingress only routes to http; runs and graph builds call internal (the /internal routes) directly.
+  ports: [{ name: http, port: 80, targetPort: http }, { name: internal, port: 8081, targetPort: internal }]
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: renart-orchestrator
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: renart-orchestrator, port: { name: http } } } }]
+  tls: [{ hosts: [{{ .Values.ingress.host }}], secretName: {{ .Values.ingress.tlsSecret }} }]
+{{- end }}
+{{- if .Values.audit.enabled }}
+---
+# One JSON line per finished run: who, which workflow at which SHA, on what, outcome, tools, links, cost.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: renart-audit
+  annotations: { helm.sh/resource-policy: keep }
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.audit.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources: { requests: { storage: {{ .Values.audit.size }} } }
+{{- end }}
+{{- if .Values.codeGraph.storage }}
+---
+# Code graph snapshots, apart from the audit: a full disk here cannot stop the audit trail. Rebuilt on demand, so not kept.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: renart-graphs
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.audit.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources: { requests: { storage: {{ .Values.codeGraph.storage }} } }
+{{- end }}
+---
+# Signs the tokens runs and graph builds present to /internal. Generated once, kept across upgrades.
+{{- $existing := lookup "v1" "Secret" .Release.Namespace "renart-internal" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: renart-internal
+  annotations: { helm.sh/resource-policy: keep }
+type: Opaque
+data:
+  HMAC_KEY: {{ if $existing }}{{ index $existing.data "HMAC_KEY" }}{{ else }}{{ randAlphaNum 48 | b64enc }}{{ end }}

@@ -1,0 +1,62 @@
+name: CI
+on:
+  push: { branches: [main], tags: ['v*'] }
+  pull_request:
+
+permissions: { contents: read }
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy: { matrix: { pkg: [orchestrator, runner, extension] } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: '${{ matrix.pkg }}/package-lock.json' }
+      - run: npm ci && npx tsc && npm test
+        working-directory: ${{ matrix.pkg }}
+
+  # The workflows project validates against its own copy of the schema; the two must not drift.
+  schema-in-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmp orchestrator/src/workflow.schema.json workflows/workflow.schema.json
+
+  # main: images tagged "main"; a v* tag: images, chart and extension zip for that version, as a release.
+  images:
+    needs: [test, schema-in-sync]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    strategy: { matrix: { image: [orchestrator, runner] } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}' }
+      # v0.9.0 → image tag 0.9.0, the tag the chart's values name.
+      - id: tag
+        run: echo "tag=$([ "$GITHUB_REF_TYPE" = tag ] && echo "${GITHUB_REF_NAME#v}" || echo main)" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.image }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/renart-${{ matrix.image }}:${{ steps.tag.outputs.tag }}
+
+  release:
+    needs: images
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions: { contents: write, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Chart to ghcr.io (OCI)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm package deploy/chart
+          helm push renart-*.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
+      - name: Extension zip
+        run: cd extension && zip -r ../renart-extension-${{ github.ref_name }}.zip manifest.json *.js *.html *.css icons
+      - name: Release
+        env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+        run: gh release create "${{ github.ref_name }}" renart-extension-*.zip renart-*.tgz --generate-notes

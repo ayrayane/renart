@@ -1,0 +1,60 @@
+stages: [test, build]
+
+default:
+  image: node:22
+
+.package:
+  stage: test
+  script:
+    - cd "$PKG"
+    - npm ci
+    - npx tsc
+    - npm test
+  cache:
+    key: "$PKG-$CI_COMMIT_REF_SLUG"
+    paths: ["$PKG/node_modules/"]
+
+orchestrator:
+  extends: .package
+  variables: { PKG: orchestrator }
+
+runner:
+  extends: .package
+  variables: { PKG: runner }
+
+extension:
+  extends: .package
+  variables: { PKG: extension }
+
+# The workflows project validates against its own copy of the schema; the two must not drift.
+schema-in-sync:
+  stage: test
+  image: alpine:3.22
+  script:
+    - cmp orchestrator/src/workflow.schema.json workflows/workflow.schema.json
+
+# Images are built on main only, tagged with the short SHA and "main".
+.image:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    # A self-signed GitLab: trust the same CA the runner was given.
+    - CERT=""; if [ -n "$CI_SERVER_TLS_CA_FILE" ]; then CERT="--registry-certificate $CI_REGISTRY=$CI_SERVER_TLS_CA_FILE"; fi
+    - /kaniko/executor --context "$CI_PROJECT_DIR/$PKG" --dockerfile "$CI_PROJECT_DIR/$PKG/Dockerfile" $CERT
+      --destination "$CI_REGISTRY_IMAGE/$PKG:$CI_COMMIT_SHORT_SHA" --destination "$CI_REGISTRY_IMAGE/$PKG:main"
+
+build-orchestrator:
+  extends: .image
+  variables: { PKG: orchestrator }
+  needs: [orchestrator, schema-in-sync]
+
+build-runner:
+  extends: .image
+  variables: { PKG: runner }
+  needs: [runner]

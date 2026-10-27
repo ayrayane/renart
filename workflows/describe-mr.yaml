@@ -1,0 +1,14 @@
+id: describe-mr
+label: Écrire la description
+description: Remplit la description de la MR à partir du diff
+context: merge_request
+workspace: true
+tools: [get_merge_request, update_merge_request_description]
+prompt: |
+  Écris la description de la MR {{mr.iid}} du projet {{project.path}} à partir de son diff et de ses commits.
+  Le dépôt est cloné sur la branche de la MR. Si le projet a un template de MR (.gitlab/merge_request_templates/),
+  suis le plus adapté. Sinon, utilise ces sections : Contexte (le pourquoi), Changements (le quoi, par fichier ou
+  par thème), Risques et points d'attention, Comment tester.
+  Garde tout ce que l'auteur a déjà écrit d'utile (liens, références "Closes #…", captures) et complète autour.
+  Sois factuel : n'invente ni motivation ni test que le diff ne montre pas.
+  Remplace la description avec update_merge_request_description.

@@ -1,0 +1,20 @@
+id: e2e-tests
+label: Écrire les tests E2E
+description: Tests de bout en bout du parcours utilisateur, en MR
+context: merge_request
+workspace: true
+tools: [get_merge_request, create_merge_request, comment_merge_request, code_graph_explore, code_graph_callers]
+prompt: |
+  Écris les tests end-to-end du parcours utilisateur que change la MR {{mr.iid}} du projet {{project.path}}.
+  Lis-la avec get_merge_request. Le dépôt est cloné sur la branche de la MR.
+  1. Trouve la suite E2E du projet (Playwright, Cypress, Selenium, Capybara, Detox, tests d'API HTTP…) : sa config,
+     ses tests existants, ses helpers, la façon dont elle démarre l'application, et le job CI qui la lance.
+  2. Identifie depuis le diff et le code graph les parcours visibles par l'utilisateur qui changent : pages,
+     formulaires, routes d'API, commandes CLI.
+  3. Écris des scénarios qui suivent ces parcours comme un utilisateur : le parcours nominal et les erreurs qu'il
+     peut voir (validation, droits, cas vide). Réutilise les helpers et les sélecteurs existants ; préfère des
+     sélecteurs stables (rôle, label, data-testid) au CSS fragile, et des attentes explicites aux pauses fixes.
+  S'il n'existe aucune suite E2E, n'en crée pas une de toutes pièces : propose en commentaire sur la MR le framework
+  adapté à la stack, avec un premier scénario d'exemple, et ne change rien.
+  Sinon, ouvre une MR avec create_merge_request (elle cible la branche de la MR) ; sa description liste les
+  scénarios et comment les lancer en local. Puis commente la MR d'origine avec le lien.

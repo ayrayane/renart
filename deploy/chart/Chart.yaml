@@ -1,0 +1,6 @@
+apiVersion: v2
+name: renart
+description: Renart, open source AI workflows for GitLab — orchestrator and runner Jobs.
+type: application
+version: 0.9.0
+appVersion: "0.9.0"

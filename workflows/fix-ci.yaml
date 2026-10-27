@@ -1,0 +1,20 @@
+id: fix-ci
+label: Réparer la pipeline
+description: Trouve pourquoi la CI échoue et propose le correctif en MR
+context: pipeline
+workspace: true
+tools: [get_pipeline, get_job_log, create_merge_request, comment_merge_request, code_graph_explore, code_graph_callers, code_graph_affected]
+prompt: |
+  La pipeline {{pipeline.id}} du projet {{project.path}} a échoué sur la branche {{pipeline.branch}}.
+  Lis-la avec get_pipeline : les jobs en échec et la fin de leurs logs. Si ce n'est pas assez, utilise get_job_log.
+  Le dépôt est cloné sur {{pipeline.branch}}. Trouve la cause racine : test cassé, erreur de compilation, lint,
+  dépendance ou configuration CI (.gitlab-ci.yml). Le code graph aide à remonter de l'erreur au code en cause
+  (code_graph_explore, code_graph_callers) et à trouver les tests concernés (code_graph_affected).
+  Fais le plus petit changement qui corrige la cause : le code s'il est faux, le test s'il est faux, la CI si c'est elle.
+  Ne désactive, ne supprime et n'ignore jamais un test, un job ou une vérification pour faire passer la pipeline.
+  Ouvre ensuite une MR avec create_merge_request (elle cible {{pipeline.branch}}). Sa description cite le job,
+  l'erreur exacte du log, la cause et le correctif.
+  Si la pipeline appartient à une MR (merge_request_iid dans get_pipeline), commente cette MR : la cause en une
+  phrase et le lien de la MR de correctif.
+  Si l'échec ne vient pas du code (runner indisponible, timeout réseau, quota, job annulé), ne change rien.
+  Explique-le et conseille de relancer le job, en commentaire sur la MR s'il y en a une.

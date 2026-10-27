@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Renart",
+  "version": "0.9.0",
+  "description": "Launch AI workflows on GitLab merge requests and issues.",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "identity",
+    "tabs"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "action": {
+    "default_title": "Renart",
+    "default_icon": {
+      "16": "icons/fox-16.png",
+      "32": "icons/fox-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/fox-16.png",
+    "32": "icons/fox-32.png",
+    "48": "icons/fox-48.png",
+    "128": "icons/fox-128.png"
+  }
+}

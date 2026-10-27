@@ -1,0 +1,18 @@
+id: apply-review
+label: Appliquer les retours
+description: Corrige le code selon les fils de revue non résolus
+context: merge_request
+when: unresolved_discussions
+workspace: true
+tools: [get_merge_request, get_discussions, reply_to_discussion, create_merge_request, comment_merge_request, code_graph_callers, code_graph_impact]
+prompt: |
+  Applique les retours de revue de la MR {{mr.iid}} du projet {{project.path}}.
+  Lis-la avec get_merge_request, puis les fils non résolus avec get_discussions. Le dépôt est cloné sur la branche de la MR.
+  Pour chaque fil, décide :
+  - le retour est juste et clair : fais le changement (vérifie avec code_graph_callers ce qu'il touche) ;
+  - le retour est discutable ou ambigu : ne change rien et explique pourquoi.
+  Quand tous les changements sont faits, ouvre une MR avec create_merge_request (elle cible la branche de la MR).
+  Sa description liste, fil par fil, ce qui a été fait.
+  Réponds ensuite dans chaque fil avec reply_to_discussion : ce que tu as changé, avec le lien de la MR de
+  correctif, ou pourquoi tu n'as rien changé. Ne résous pas les fils : c'est au relecteur de le faire.
+  S'il n'y a aucun fil non résolu, dis-le simplement en commentaire sur la MR.

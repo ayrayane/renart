@@ -1,0 +1,39 @@
+{{- if .Values.agentgateway.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: renart-agentgateway
+data:
+  config.yaml: {{ .Values.agentgateway.config | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: renart-agentgateway
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: renart-agentgateway } }
+  template:
+    metadata:
+      labels: { app: renart-agentgateway }
+      annotations: { checksum/config: {{ .Values.agentgateway.config | sha256sum }} }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 65532, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: agentgateway
+          image: {{ .Values.agentgateway.image }}
+          args: [-f, /config/config.yaml]
+          ports: [{ name: http, containerPort: 3000 }]
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { memory: 256Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: config, mountPath: /config, readOnly: true }]
+      volumes: [{ name: config, configMap: { name: renart-agentgateway } }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: renart-agentgateway
+spec:
+  selector: { app: renart-agentgateway }
+  ports: [{ name: http, port: 3000, targetPort: http }]
+{{- end }}

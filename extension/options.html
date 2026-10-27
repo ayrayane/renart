@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Renart — options</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="options-page">
+  <main class="options">
+    <h1>
+      <img class="logo" src="icons/fox.svg" alt="">
+      Renart
+    </h1>
+    <p class="lead">Reliez l'extension à votre GitLab et à votre orchestrateur.</p>
+    <form id="form">
+      <label for="gitlabUrl">URL de GitLab</label>
+      <input id="gitlabUrl" type="url" required placeholder="https://gitlab.example.com">
+      <label for="orchestratorUrl">URL de l'orchestrateur</label>
+      <input id="orchestratorUrl" type="url" required placeholder="https://renart.example.com">
+      <label for="clientId">Application ID OAuth</label>
+      <input id="clientId" required>
+      <p class="hint">Créez une application OAuth dans GitLab : Admin → Applications, ou Préférences → Applications pour vous seul. Non confidentielle, scope <code>read_api</code>, avec cette URL de redirection :<br><code id="redirect"></code> <button type="button" id="copy" class="btn-link">Copier</button><br>Collez ensuite son Application ID ci-dessus.</p>
+      <button type="submit" class="btn confirm">Enregistrer</button>
+      <p id="status" role="status"></p>
+    </form>
+  </main>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

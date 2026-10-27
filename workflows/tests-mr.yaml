@@ -1,0 +1,15 @@
+id: tests-mr
+label: Écrire les tests manquants
+description: Tests unitaires pour le code modifié, en MR
+context: merge_request
+workspace: true
+tools: [get_merge_request, create_merge_request, comment_merge_request, code_graph_callers, code_graph_affected, code_graph_explore]
+prompt: |
+  Écris les tests unitaires qui manquent pour la MR {{mr.iid}} du projet {{project.path}}.
+  Lis-la avec get_merge_request. Le dépôt est cloné sur la branche de la MR. Avec code_graph_affected sur les fichiers
+  modifiés, trouve les tests existants qui les couvrent, et lis-les : suis leur framework, leurs conventions et leurs fixtures.
+  Couvre le comportement nouveau ou modifié : le cas nominal, les cas limites (vide, zéro, None, erreurs) et les
+  régressions possibles pour les appelants (code_graph_callers). Pas de test qui ne fait que répéter l'implémentation.
+  N'ajoute aucune dépendance de test qui n'existe pas déjà dans le projet.
+  Ouvre une MR avec create_merge_request (elle cible la branche de la MR) ; sa description liste les cas couverts.
+  Puis commente la MR d'origine avec le lien. Si tout est déjà bien couvert, dis-le en commentaire et ne change rien.

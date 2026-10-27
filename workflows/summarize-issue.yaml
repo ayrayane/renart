@@ -1,0 +1,13 @@
+id: summarize-issue
+label: Résumer la discussion
+description: Où en est l'issue, en un commentaire
+context: issue
+tools: [get_issue, comment_issue]
+prompt: |
+  Lis l'issue {{issue.iid}} du projet {{project.path}} et tous ses commentaires.
+  Résume la discussion pour quelqu'un qui arrive maintenant, en un seul commentaire sur l'issue :
+  - le problème en une phrase ;
+  - les décisions prises (avec qui les a prises) ;
+  - les questions encore ouvertes, et qui doit y répondre ;
+  - la prochaine étape concrète.
+  Reste factuel et court : ne reprends pas ce qui a été abandonné en cours de route.

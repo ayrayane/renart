@@ -1,0 +1,7 @@
+# shortcut: workflow.schema.json is a copy of orchestrator/src/workflow.schema.json in the renart repo; keep them in sync.
+validate:
+  image: node:22-alpine
+  script:
+    - npx -y ajv-cli@5 validate --spec=draft7 -s workflow.schema.json -d "*.y*ml"
+  rules:
+    - changes: ["*.yaml", "*.yml", "workflow.schema.json", ".gitlab-ci.yml"]

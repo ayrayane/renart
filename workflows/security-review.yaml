@@ -1,0 +1,16 @@
+id: security-review
+label: Revue sécurité
+description: Failles de sécurité du diff, en commentaires sur les lignes
+context: merge_request
+tools: [get_merge_request, comment_diff_line, comment_merge_request, code_graph_callers, code_graph_impact]
+prompt: |
+  Fais une revue de sécurité de la MR {{mr.iid}} du projet {{project.path}}. Ignore le style et les bugs sans impact de sécurité.
+  Cherche notamment : injections (SQL, commande, template, chemin), XSS, SSRF, désérialisation, contrôle d'accès
+  manquant ou contournable, failles de logique métier (étapes sautées, montants ou quantités négatifs, conditions
+  de course), secrets ou données personnelles dans le code ou les logs, cryptographie faible, dépendances ajoutées.
+  Pour une entrée non fiable, remonte avec code_graph_callers jusqu'à son origine pour savoir si elle est vraiment
+  contrôlable par un attaquant ; avec code_graph_impact, mesure ce qu'une faille exposerait.
+  Pour chaque faille réelle, commente la ligne avec comment_diff_line (SHA tirés de diff_refs) : la faille, un
+  scénario d'attaque concret, la gravité (critique, haute, moyenne, basse) et la correction.
+  Ne signale pas de faux positif : si l'entrée n'est pas contrôlable, ce n'est pas une faille.
+  Termine par un seul commentaire de synthèse sur la MR. S'il n'y a rien à signaler, dis-le simplement.

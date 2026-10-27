@@ -1,0 +1,13 @@
+id: ask-mr
+label: Poser une question
+description: Sur cette MR et son code, la réponse s'affiche ici
+context: merge_request
+workspace: true
+tools: [get_merge_request, code_graph_explore, code_graph_callers, code_graph_impact, code_graph_affected]
+prompt: |
+  La MR {{mr.iid}} du projet {{project.path}} est clonée dans ton répertoire de travail (sa branche).
+  Réponds à la question de l'utilisateur (sa consigne ci-dessous) sur cette MR : lis-la avec get_merge_request, et
+  appuie-toi sur le code et le code graph (qui appelle quoi, ce qu'un changement touche). Cite fichier:ligne.
+  S'il n'y a pas de question, explique la MR à un relecteur qui ne connaît pas ce code : ce qu'elle fait, comment
+  le changement s'insère dans l'existant, et où regarder en premier.
+  Réponds directement, en Markdown et en restant concis. Ne modifie aucun fichier : rien n'est publié dans GitLab.

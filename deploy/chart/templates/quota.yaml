@@ -1,0 +1,10 @@
+{{- if .Values.quota.enabled }}
+# Caps concurrent runs: each run is one pod, the orchestrator is one more.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: renart
+spec:
+  hard:
+    pods: {{ .Values.quota.pods | quote }}
+{{- end }}

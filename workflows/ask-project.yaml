@@ -1,0 +1,13 @@
+id: ask-project
+label: Poser une question
+description: Sur le code du projet, la réponse s'affiche ici
+context: project
+workspace: true
+tools: [code_graph_explore, code_graph_callers, code_graph_impact, code_graph_affected]
+prompt: |
+  Le projet {{project.path}} est cloné dans ton répertoire de travail.
+  Réponds à la question de l'utilisateur (sa consigne ci-dessous) en t'appuyant sur le code. Commence par le code graph
+  (code_graph_explore), puis lis les fichiers utiles. Cite chaque affirmation avec fichier:ligne.
+  S'il n'y a pas de question, présente le projet à un nouvel arrivant : ce qu'il fait, son architecture, les points
+  d'entrée, comment lancer les tests, et où commencer pour contribuer.
+  Réponds directement, en Markdown et en restant concis. Ne modifie aucun fichier : rien n'est publié dans GitLab.

@@ -1,0 +1,9 @@
+id: summarize-mr
+label: Résumer la MR
+description: Un commentaire de synthèse sur la MR
+context: merge_request
+tools: [get_merge_request, comment_merge_request]
+prompt: |
+  Résume la MR {{mr.iid}} du projet {{project.path}} en quelques lignes :
+  ce qu'elle change, pourquoi, et les points à vérifier en relecture.
+  Poste le résumé en un seul commentaire sur la MR.
